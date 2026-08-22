@@ -10,12 +10,12 @@ class SlotSelector extends StatefulWidget {
 }
 
 class _SlotSelectorState extends State<SlotSelector> {
-  String selectedSlot = '12:00 PM';
+  String selectedSlot = '10:30 AM';
 
   final List<Map<String, dynamic>> slots = [
     {'time': '09:30 AM', 'status': 'unavailable'},
     {'time': '10:00 AM', 'status': 'available'},
-    {'time': '10:30 AM', 'status': 'selected'},
+    {'time': '10:30 AM', 'status': 'available'},
     {'time': '11:00 AM', 'status': 'available'},
     {'time': '11:30 AM', 'status': 'unavailable'},
     {'time': '12:00 PM', 'status': 'available'},
@@ -41,13 +41,14 @@ class _SlotSelectorState extends State<SlotSelector> {
           itemBuilder: (context, index) {
             final slot = slots[index];
             final status = slot['status'];
+            final isSelected = selectedSlot == slot['time'];
             
             Color bgColor = AppColors.surface;
             Color textColor = AppColors.textPrimary;
             double opacity = 1.0;
             Border border = Border.all(color: AppColors.border);
 
-            if (status == 'selected' || selectedSlot == slot['time']) {
+            if (isSelected) {
               bgColor = AppColors.primary;
               textColor = Colors.white;
               border = Border.all(color: Colors.transparent);

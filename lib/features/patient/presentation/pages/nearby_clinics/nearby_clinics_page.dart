@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -7,20 +8,53 @@ import '../../../../../core/widgets/app_map_view.dart';
 import '../../providers/nearby_clinics_provider.dart';
 import '../../widgets/clinic_bottom_sheet.dart';
 
-class NearbyClinicsPage extends StatelessWidget {
+class NearbyClinicsPage extends StatefulWidget {
   const NearbyClinicsPage({super.key});
+
+  @override
+  State<NearbyClinicsPage> createState() => _NearbyClinicsPageState();
+}
+
+class _NearbyClinicsPageState extends State<NearbyClinicsPage> {
+  late final MapController _mapController;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  void _zoom(double delta) {
+    final currentZoom = _mapController.camera.zoom;
+    _mapController.move(_mapController.camera.center, currentZoom + delta);
+  }
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => NearbyClinicsProvider(),
-      child: const _NearbyClinicsView(),
+      child: _NearbyClinicsView(
+        mapController: _mapController,
+        onZoom: _zoom,
+      ),
     );
   }
 }
 
 class _NearbyClinicsView extends StatelessWidget {
-  const _NearbyClinicsView();
+  final MapController mapController;
+  final Function(double) onZoom;
+
+  const _NearbyClinicsView({
+    required this.mapController,
+    required this.onZoom,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +96,7 @@ class _NearbyClinicsView extends StatelessWidget {
                       // Map Layer (Bottom) - Fills remaining space
                       Positioned.fill(
                         child: AppMapView(
+                          controller: mapController,
                           clinics: provider.clinics,
                           onMarkerTap: (clinic) {
                             provider.selectClinic(clinic.id);
@@ -69,8 +104,26 @@ class _NearbyClinicsView extends StatelessWidget {
                         ),
                       ),
 
+                      // Zoom Buttons Overlay - Stable in this Stack
+                      Positioned(
+                        right: 16,
+                        top: 16,
+                        child: Column(
+                          children: [
+                            _ZoomButton(
+                              icon: LucideIcons.plus,
+                              onPressed: () => onZoom(1),
+                            ),
+                            const SizedBox(height: 8),
+                            _ZoomButton(
+                              icon: LucideIcons.minus,
+                              onPressed: () => onZoom(-1),
+                            ),
+                          ],
+                        ),
+                      ),
+
                       // Draggable Bottom Sheet (Overlay)
-                      // Interactive like Uber/Rapido
                       ClinicBottomSheet(clinics: provider.clinics),
                     ],
                   );
@@ -90,6 +143,8 @@ class _NearbyClinicsView extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final provider = context.read<NearbyClinicsProvider>();
+    
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
       decoration: const BoxDecoration(
@@ -151,6 +206,7 @@ class _NearbyClinicsView extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
+                    onChanged: (value) => provider.searchClinics(value),
                     decoration: InputDecoration(
                       hintText: 'Search by clinic name, doctor, or area',
                       hintStyle: GoogleFonts.inter(
@@ -259,6 +315,48 @@ class _NearbyClinicsView extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.textPrimary,
           borderRadius: BorderRadius.circular(100),
+        ),
+      ),
+    );
+  }
+}
+
+class _ZoomButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _ZoomButton({
+    required this.icon,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Icon(
+            icon,
+            size: 20,
+            color: AppColors.teal,
+          ),
         ),
       ),
     );

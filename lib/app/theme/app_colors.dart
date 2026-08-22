@@ -20,10 +20,19 @@ class AppColors {
 
   // Brand / Accent / Teal
   static const Color teal = Color(0xFF0F766E);
+  static const Color primary = Color(0xFF0F766E);
+  static const Color secondary = Color(0xFF475569);
   static const Color iconButtonBg = Color(0xFFF0FDFA);
+  static const Color iconBg = Color(0xFFF0FDFA);
 
   // Status & Warning Colors
   static const Color warning = Color(0xFFEA580C);
+
+  // Additional UI Colors
+  static const Color surface = Color(0xFFFFFFFF);
+  static const Color textAccent = Color(0xFF0F766E);
+  static const Color disabledBg = Color(0xFFE2E8F0);
+  static const Color textDisabled = Color(0xFF94A3B8);
 
   // Bottom indicator bar
   static const Color bottomIndicator = Color(0xFF0F172A);

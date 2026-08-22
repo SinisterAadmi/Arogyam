@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/entities/clinic.dart';
 import '../providers/nearby_clinics_provider.dart';
+import '../pages/appointment_booking/appointment_booking_page.dart';
 import 'clinic_card.dart';
 
 class ClinicBottomSheet extends StatelessWidget {
@@ -41,10 +42,11 @@ class ClinicBottomSheet extends StatelessWidget {
               ),
             ],
           ),
-          child: Column(
+          child: ListView(
+            controller: scrollController,
+            padding: EdgeInsets.zero,
             children: [
-              // 1. Drag handle — MUST be a direct Column child, outside the ListView
-              // This ensures the handle resize the sheet when dragged.
+              // 1. Drag handle — Now inside the ListView so it's a drag target
               Center(
                 child: Container(
                   width: 40,
@@ -57,7 +59,7 @@ class ClinicBottomSheet extends StatelessWidget {
                 ),
               ),
 
-              // 2. "Clinics Near You" + sort header row — MUST also be outside the ListView
+              // 2. "Clinics Near You" + sort header row
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Row(
@@ -79,18 +81,28 @@ class ClinicBottomSheet extends StatelessWidget {
 
               const SizedBox(height: 8),
 
-              // 3. ONLY the clinic cards go inside the scrollable list
-              Expanded(
-                child: ListView.builder(
-                  controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  itemCount: clinics.length,
-                  itemBuilder: (context, index) {
+              // 3. Clinic cards
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Column(
+                  children: clinics.map((clinic) {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: ClinicCard(clinic: clinics[index]),
+                      child: ClinicCard(
+                        clinic: clinic,
+                        onBookVisit: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AppointmentBookingPage(
+                                clinic: clinic,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     );
-                  },
+                  }).toList(),
                 ),
               ),
             ],

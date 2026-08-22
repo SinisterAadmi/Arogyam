@@ -7,11 +7,13 @@ enum SortOption { distance, waitTime, rating, availability }
 class NearbyClinicsProvider extends ChangeNotifier {
   final GetNearbyClinicsUseCase _getNearbyClinicsUseCase;
 
-  List<Clinic> _clinics = [];
+  List<Clinic> _allClinics = [];
+  List<Clinic> _filteredClinics = [];
   bool _isLoading = false;
   String? _errorMessage;
   String? _selectedClinicId;
   SortOption _currentSort = SortOption.distance;
+  String _searchQuery = '';
 
   NearbyClinicsProvider({GetNearbyClinicsUseCase? getNearbyClinicsUseCase})
       : _getNearbyClinicsUseCase =
@@ -19,11 +21,12 @@ class NearbyClinicsProvider extends ChangeNotifier {
     fetchNearbyClinics();
   }
 
-  List<Clinic> get clinics => _clinics;
+  List<Clinic> get clinics => _filteredClinics;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get selectedClinicId => _selectedClinicId;
   SortOption get currentSort => _currentSort;
+  String get searchQuery => _searchQuery;
 
   String get currentSortLabel {
     switch (_currentSort) {
@@ -38,11 +41,11 @@ class NearbyClinicsProvider extends ChangeNotifier {
     }
   }
 
-  Clinic? get selectedClinic => _clinics.isEmpty
+  Clinic? get selectedClinic => _filteredClinics.isEmpty
       ? null
-      : _clinics.firstWhere(
+      : _filteredClinics.firstWhere(
           (c) => c.id == _selectedClinicId,
-          orElse: () => _clinics.first,
+          orElse: () => _filteredClinics.first,
         );
 
   void selectClinic(String id) {
@@ -52,26 +55,48 @@ class NearbyClinicsProvider extends ChangeNotifier {
     }
   }
 
+  void searchClinics(String query) {
+    _searchQuery = query.toLowerCase();
+    _applyFilterAndSort();
+  }
+
   void sortBy(SortOption option) {
     _currentSort = option;
-    _sortClinics();
+    _applyFilterAndSort();
+  }
+
+  void _applyFilterAndSort() {
+    // 1. Filter
+    if (_searchQuery.isEmpty) {
+      _filteredClinics = List.from(_allClinics);
+    } else {
+      _filteredClinics = _allClinics.where((clinic) {
+        final nameMatch = clinic.name.toLowerCase().contains(_searchQuery);
+        final addressMatch = clinic.address.toLowerCase().contains(_searchQuery);
+        // You could also add specialty if it was in the entity
+        return nameMatch || addressMatch;
+      }).toList();
+    }
+
+    // 2. Sort
+    _sortClinics(_filteredClinics);
+    
     notifyListeners();
   }
 
-  void _sortClinics() {
+  void _sortClinics(List<Clinic> list) {
     switch (_currentSort) {
       case SortOption.distance:
-        _clinics.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+        list.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
         break;
       case SortOption.waitTime:
-        _clinics.sort((a, b) => a.waitTimeMinutes.compareTo(b.waitTimeMinutes));
+        list.sort((a, b) => a.waitTimeMinutes.compareTo(b.waitTimeMinutes));
         break;
       case SortOption.rating:
-        _clinics.sort((a, b) => b.rating.compareTo(a.rating)); // Highest first
+        list.sort((a, b) => b.rating.compareTo(a.rating)); // Highest first
         break;
       case SortOption.availability:
-        // Live queue active first
-        _clinics.sort((a, b) {
+        list.sort((a, b) {
           if (a.isLiveQueueActive == b.isLiveQueueActive) return 0;
           return a.isLiveQueueActive ? -1 : 1;
         });
@@ -86,10 +111,11 @@ class NearbyClinicsProvider extends ChangeNotifier {
 
     try {
       final fetchedClinics = await _getNearbyClinicsUseCase();
-      _clinics = fetchedClinics.toList(); // Create a mutable copy
-      _sortClinics(); // Initial sort
-      if (_clinics.isNotEmpty && _selectedClinicId == null) {
-        _selectedClinicId = _clinics.first.id;
+      _allClinics = fetchedClinics.toList();
+      _applyFilterAndSort();
+      
+      if (_filteredClinics.isNotEmpty && _selectedClinicId == null) {
+        _selectedClinicId = _filteredClinics.first.id;
       }
     } catch (e) {
       _errorMessage = e.toString();

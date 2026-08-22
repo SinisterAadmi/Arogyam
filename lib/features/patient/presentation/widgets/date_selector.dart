@@ -51,7 +51,7 @@ class _DateSelectorState extends State<DateSelector> {
                       Text(
                         dates[index]['day']!,
                         style: AppTypography.labelMedium.copyWith(
-                          color: isSelected ? AppColors.textAccent : AppColors.textSecondary,
+                          color: isSelected ? AppColors.white : AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 4),

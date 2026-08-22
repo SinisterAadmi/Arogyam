@@ -7,8 +7,15 @@ import 'package:arogyam_flutter/features/patient/presentation/widgets/date_selec
 import 'package:arogyam_flutter/features/patient/presentation/widgets/slot_selector.dart';
 import 'package:arogyam_flutter/features/patient/presentation/widgets/ai_callback_section.dart';
 
+import 'package:arogyam_flutter/shared/entities/clinic.dart';
+
 class AppointmentBookingPage extends StatelessWidget {
-  const AppointmentBookingPage({super.key});
+  final Clinic clinic;
+
+  const AppointmentBookingPage({
+    super.key,
+    required this.clinic,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +75,7 @@ class AppointmentBookingPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const ClinicInfoCard(),
+            ClinicInfoCard(clinic: clinic),
             const SizedBox(height: 20),
             const DateSelector(),
             const SizedBox(height: 20),
@@ -80,7 +87,13 @@ class AppointmentBookingPage extends StatelessWidget {
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Appointment confirmed at ${clinic.name}'),
+                    ),
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -98,53 +111,6 @@ class AppointmentBookingPage extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        height: 80,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: AppColors.border)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem('Home', 'https://www.figma.com/api/mcp/asset/4cedf445-6694-4780-84b8-56691bfa0d12.svg', false),
-            _buildNavItem('Clinics', 'https://www.figma.com/api/mcp/asset/c088cc17-9240-4e56-a258-afa7f18bb565.svg', true),
-            _buildNavItem('History', 'https://www.figma.com/api/mcp/asset/7cfbc9ee-3ef8-449d-83f9-0e10fe36b2ea.svg', false),
-            _buildNavItem('Share', 'https://www.figma.com/api/mcp/asset/85f46f87-ce04-4a18-887d-f8ce2d24bbc6.svg', false),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(String label, String iconUrl, bool isSelected) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.iconBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: SvgPicture.network(
-            iconUrl,
-            width: 20,
-            height: 20,
-            colorFilter: ColorFilter.mode(
-              isSelected ? AppColors.primary : AppColors.textSecondary,
-              BlendMode.srcIn,
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: isSelected
-              ? AppTypography.labelSmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold)
-              : AppTypography.labelSmall,
-        ),
-      ],
     );
   }
 }

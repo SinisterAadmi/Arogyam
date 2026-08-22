@@ -7,11 +7,12 @@ import '../../app/theme/app_colors.dart';
 import '../../shared/entities/clinic.dart';
 import '../constants/api_constants.dart';
 
-class AppMapView extends StatefulWidget {
+class AppMapView extends StatelessWidget {
   final List<Clinic> clinics;
   final LatLng? initialCenter;
   final double initialZoom;
   final void Function(Clinic)? onMarkerTap;
+  final MapController? controller;
 
   const AppMapView({
     super.key,
@@ -19,142 +20,61 @@ class AppMapView extends StatefulWidget {
     this.initialCenter,
     this.initialZoom = 14.0,
     this.onMarkerTap,
+    this.controller,
   });
-
-  @override
-  State<AppMapView> createState() => _AppMapViewState();
-}
-
-class _AppMapViewState extends State<AppMapView> {
-  late final MapController _mapController;
-
-  @override
-  void initState() {
-    super.initState();
-    _mapController = MapController();
-  }
-
-  @override
-  void dispose() {
-    _mapController.dispose();
-    super.dispose();
-  }
-
-  void _zoom(double delta) {
-    final currentZoom = _mapController.camera.zoom;
-    _mapController.move(_mapController.camera.center, currentZoom + delta);
-  }
 
   @override
   Widget build(BuildContext context) {
     // Fallback center if no clinics and no initialCenter provided
-    final LatLng center = widget.initialCenter ??
-        (widget.clinics.isNotEmpty
-            ? LatLng(widget.clinics.first.latitude, widget.clinics.first.longitude)
+    final LatLng center = initialCenter ??
+        (clinics.isNotEmpty
+            ? LatLng(clinics.first.latitude, clinics.first.longitude)
             : const LatLng(28.5921, 77.0460)); // Dwarka, Delhi fallback
 
-    return Stack(
-      children: [
-        FlutterMap(
-          mapController: _mapController,
-          options: MapOptions(
-            initialCenter: center,
-            initialZoom: widget.initialZoom,
-            interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.all,
-            ),
-          ),
-          children: [
-            TileLayer(
-              // TODO: verify tile URL pattern against your current MapTiler dashboard
-              urlTemplate:
-                  'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${ApiConstants.mapTilerApiKey}',
-              userAgentPackageName: 'com.example.arogyam',
-              subdomains: const ['a', 'b', 'c', 'd'],
-            ),
-            MarkerLayer(
-              markers: widget.clinics.map((clinic) {
-                return Marker(
-                  point: LatLng(clinic.latitude, clinic.longitude),
-                  width: 150, // Enough width for the pill
-                  height: 40,
-                  child: GestureDetector(
-                    onTap: () => widget.onMarkerTap?.call(clinic),
-                    child: _ClinicPillMarker(name: clinic.name),
-                  ),
-                );
-              }).toList(),
-            ),
-            const RichAttributionWidget(
-              attributions: [
-                TextSourceAttribution('MapTiler'),
-                TextSourceAttribution('OpenStreetMap contributors'),
-              ],
-            ),
-          ],
-        ),
-
-        // Zoom Buttons Overlay
-        Positioned(
-          right: 16,
-          top: MediaQuery.of(context).size.height * 0.2, // Positioned in the upper half
-          child: Column(
-            children: [
-              _ZoomButton(
-                icon: LucideIcons.plus,
-                onPressed: () => _zoom(1),
-              ),
-              const SizedBox(height: 8),
-              _ZoomButton(
-                icon: LucideIcons.minus,
-                onPressed: () => _zoom(-1),
-              ),
-            ],
+    return FlutterMap(
+      mapController: controller,
+      options: MapOptions(
+        initialCenter: center,
+        initialZoom: initialZoom,
+        minZoom: 2.0,
+        maxZoom: 18.0,
+        cameraConstraint: CameraConstraint.contain(
+          bounds: LatLngBounds(
+            const LatLng(-56.0, -180.0),
+            const LatLng(78.0, 180.0),
           ),
         ),
-      ],
-    );
-  }
-}
-
-class _ZoomButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  const _ZoomButton({
-    required this.icon,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Icon(
-            icon,
-            size: 20,
-            color: AppColors.teal,
-          ),
+        interactionOptions: const InteractionOptions(
+          flags: InteractiveFlag.all,
         ),
       ),
+      children: [
+        TileLayer(
+          urlTemplate:
+              'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${ApiConstants.mapTilerApiKey}',
+          userAgentPackageName: 'com.example.arogyam',
+          tileProvider: NetworkTileProvider(),
+        ),
+        MarkerLayer(
+          markers: clinics.map((clinic) {
+            return Marker(
+              point: LatLng(clinic.latitude, clinic.longitude),
+              width: 150, // Enough width for the pill
+              height: 40,
+              child: GestureDetector(
+                onTap: () => onMarkerTap?.call(clinic),
+                child: _ClinicPillMarker(name: clinic.name),
+              ),
+            );
+          }).toList(),
+        ),
+        const RichAttributionWidget(
+          attributions: [
+            TextSourceAttribution('MapTiler'),
+            TextSourceAttribution('OpenStreetMap contributors'),
+          ],
+        ),
+      ],
     );
   }
 }
