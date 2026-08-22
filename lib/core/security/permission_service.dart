@@ -1,1 +1,2 @@
-} Stablishing the foundation ...
+// Permission service placeholder
+class PermissionService {}

@@ -1,1 +1,2 @@
-} Stablishing the foundation ...
+// App bootstrap placeholder
+Future<void> bootstrap() async {}
