@@ -1,1 +1,3 @@
-} Stablishing the foundation ...
+class PermissionService {
+  // Permission handling logic
+}
