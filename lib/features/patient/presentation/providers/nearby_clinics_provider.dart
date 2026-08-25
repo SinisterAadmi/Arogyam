@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../../../../shared/entities/clinic.dart';
-import '../../domain/get_nearby_clinics_usecase.dart';
+import '../../domain/usecases/get_nearby_clinics_usecase.dart';
 
 enum SortOption { distance, waitTime, rating, availability }
 

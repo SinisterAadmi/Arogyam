@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'app/router/app_router.dart';
 import 'app/theme/app_colors.dart';
-import 'features/patient/presentation/pages/nearby_clinics/nearby_clinics_page.dart';
+import 'features/patient/presentation/pages/patient_home/patient_home_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,7 +34,8 @@ class ArogyamApp extends StatelessWidget {
           surface: AppColors.card,
         ),
       ),
-      home: const NearbyClinicsPage(),
+      onGenerateRoute: AppRouter.onGenerateRoute,
+      home: const PatientHomePage(),
     );
   }
 }

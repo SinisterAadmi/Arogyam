@@ -1,5 +1,5 @@
-import '../../../shared/entities/clinic.dart';
-import '../data/clinic_repository.dart';
+import '../../../../shared/entities/clinic.dart';
+import '../../data/clinic_repository.dart';
 
 class GetNearbyClinicsUseCase {
   final ClinicRepository _repository;

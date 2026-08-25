@@ -8,6 +8,8 @@ import '../../../../../core/widgets/app_map_view.dart';
 import '../../providers/nearby_clinics_provider.dart';
 import '../../widgets/clinic_bottom_sheet.dart';
 
+import '../../../../../app/router/route_names.dart';
+
 class NearbyClinicsPage extends StatefulWidget {
   const NearbyClinicsPage({super.key});
 
@@ -131,14 +133,10 @@ class _NearbyClinicsView extends StatelessWidget {
               ),
             ),
 
-            // 3. Bottom Navigation Bar
-            _buildBottomNav(),
-
-            // 4. Home Indicator
-            _buildHomeIndicator(),
           ],
         ),
       ),
+      bottomNavigationBar: _buildBottomNav(context),
     );
   }
 
@@ -164,7 +162,9 @@ class _NearbyClinicsView extends StatelessWidget {
             children: [
               _buildCircleButton(
                 icon: LucideIcons.chevronLeft,
-                onTap: () {},
+                onTap: () {
+                  Navigator.pushReplacementNamed(context, RouteNames.patientHome);
+                },
               ),
               Text(
                 'Clinics & Centers',
@@ -250,7 +250,7 @@ class _NearbyClinicsView extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(BuildContext context) {
     return Container(
       height: 72,
       decoration: const BoxDecoration(
@@ -265,57 +265,50 @@ class _NearbyClinicsView extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildNavItem(LucideIcons.home, 'Home', false),
-          _buildNavItem(LucideIcons.mapPin, 'Clinics', true),
-          _buildNavItem(LucideIcons.archive, 'Records', false),
-          _buildNavItem(LucideIcons.radio, 'Live Queue', false),
+          _buildNavItem(LucideIcons.home, 'Home', false, () {
+            Navigator.pushReplacementNamed(context, RouteNames.patientHome);
+          }),
+          _buildNavItem(LucideIcons.mapPin, 'Clinics', true, () {}),
+          _buildNavItem(LucideIcons.archive, 'History', false, () {
+            Navigator.pushReplacementNamed(context, RouteNames.medicalHistory);
+          }),
+          _buildNavItem(LucideIcons.radio, 'Share', false, () {
+            Navigator.pushReplacementNamed(context, RouteNames.nfcShare);
+          }),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isActive) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 40,
-          height: 28,
-          decoration: BoxDecoration(
-            color: isActive ? AppColors.iconButtonBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
+  Widget _buildNavItem(IconData icon, String label, bool isActive, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 40,
+            height: 28,
+            decoration: BoxDecoration(
+              color: isActive ? AppColors.iconButtonBg : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: isActive ? AppColors.teal : AppColors.textSecondary,
+            ),
           ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: isActive ? AppColors.teal : AppColors.textSecondary,
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+              color: isActive ? AppColors.teal : AppColors.textSecondary,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-            color: isActive ? AppColors.teal : AppColors.textSecondary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHomeIndicator() {
-    return Container(
-      color: AppColors.card,
-      padding: const EdgeInsets.only(bottom: 8),
-      alignment: Alignment.center,
-      child: Container(
-        width: 134,
-        height: 5,
-        decoration: BoxDecoration(
-          color: AppColors.textPrimary,
-          borderRadius: BorderRadius.circular(100),
-        ),
+        ],
       ),
     );
   }
