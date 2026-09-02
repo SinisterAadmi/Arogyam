@@ -1,13 +1,12 @@
 import '../../../../shared/entities/clinic.dart';
-import '../../data/clinic_repository.dart';
+import '../repositories/clinic_repository.dart';
 
 class GetNearbyClinicsUseCase {
   final ClinicRepository _repository;
 
-  GetNearbyClinicsUseCase({ClinicRepository? repository})
-      : _repository = repository ?? ClinicRepositoryImpl();
+  GetNearbyClinicsUseCase(this._repository);
 
-  Future<List<Clinic>> call() {
-    return _repository.getNearbyClinics();
+  Future<List<Clinic>> call({double? lat, double? lng}) {
+    return _repository.getNearbyClinics(lat: lat, lng: lng);
   }
 }

@@ -1,26 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:arogyam_flutter/app/theme/app_colors.dart';
-import 'package:arogyam_flutter/app/theme/app_typography.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/app_typography.dart';
+import '../providers/appointment_provider.dart';
 
-class DateSelector extends StatefulWidget {
+class DateSelector extends StatelessWidget {
   const DateSelector({super.key});
 
   @override
-  State<DateSelector> createState() => _DateSelectorState();
-}
-
-class _DateSelectorState extends State<DateSelector> {
-  int selectedIndex = 1; // "Tomorrow" selected in Figma
-
-  final List<Map<String, String>> dates = [
-    {'day': 'Today', 'date': '24 Jan'},
-    {'day': 'Tomorrow', 'date': '25 Jan'},
-    {'day': 'Mon', 'date': '26 Jan'},
-    {'day': 'Tue', 'date': '27 Jan'},
-  ];
-
-  @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AppointmentProvider>();
+    final List<DateTime> dates = List.generate(7, (index) => DateTime.now().add(Duration(days: index)));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -33,13 +25,27 @@ class _DateSelectorState extends State<DateSelector> {
             itemCount: dates.length,
             separatorBuilder: (context, index) => const SizedBox(width: 10),
             itemBuilder: (context, index) {
-              final isSelected = selectedIndex == index;
+              final date = dates[index];
+              final isSelected = provider.selectedDate != null &&
+                  date.year == provider.selectedDate!.year &&
+                  date.month == provider.selectedDate!.month &&
+                  date.day == provider.selectedDate!.day;
+
+              String dayStr;
+              if (index == 0) {
+                dayStr = 'Today';
+              } else if (index == 1) {
+                dayStr = 'Tomorrow';
+              } else {
+                dayStr = DateFormat('E').format(date);
+              }
+
               return GestureDetector(
-                onTap: () => setState(() => selectedIndex = index),
+                onTap: () => provider.setDate(date),
                 child: Container(
                   width: 80,
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary : AppColors.surface,
+                    color: isSelected ? AppColors.teal : Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isSelected ? Colors.transparent : AppColors.border,
@@ -49,16 +55,17 @@ class _DateSelectorState extends State<DateSelector> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        dates[index]['day']!,
+                        dayStr,
                         style: AppTypography.labelMedium.copyWith(
-                          color: isSelected ? AppColors.white : AppColors.textSecondary,
+                          color: isSelected ? Colors.white70 : AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        dates[index]['date']!,
+                        DateFormat('d MMM').format(date),
                         style: AppTypography.bodyLarge.copyWith(
                           color: isSelected ? Colors.white : AppColors.textPrimary,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],

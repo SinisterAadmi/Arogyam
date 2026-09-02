@@ -1,33 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:arogyam_flutter/app/theme/app_colors.dart';
-import 'package:arogyam_flutter/app/theme/app_typography.dart';
+import 'package:provider/provider.dart';
+import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/app_typography.dart';
+import '../providers/appointment_provider.dart';
 
-class SlotSelector extends StatefulWidget {
+class SlotSelector extends StatelessWidget {
   const SlotSelector({super.key});
 
   @override
-  State<SlotSelector> createState() => _SlotSelectorState();
-}
-
-class _SlotSelectorState extends State<SlotSelector> {
-  String selectedSlot = '10:30 AM';
-
-  final List<Map<String, dynamic>> slots = [
-    {'time': '09:30 AM', 'status': 'unavailable'},
-    {'time': '10:00 AM', 'status': 'available'},
-    {'time': '10:30 AM', 'status': 'available'},
-    {'time': '11:00 AM', 'status': 'available'},
-    {'time': '11:30 AM', 'status': 'unavailable'},
-    {'time': '12:00 PM', 'status': 'available'},
-  ];
-
-  @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AppointmentProvider>();
+    
+    final List<Map<String, dynamic>> slots = [
+      {'time': '09:30 AM', 'status': 'unavailable'},
+      {'time': '10:00 AM', 'status': 'available'},
+      {'time': '10:30 AM', 'status': 'available'},
+      {'time': '11:00 AM', 'status': 'available'},
+      {'time': '11:30 AM', 'status': 'unavailable'},
+      {'time': '12:00 PM', 'status': 'available'},
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Available Slots', style: AppTypography.h2),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -35,48 +32,31 @@ class _SlotSelectorState extends State<SlotSelector> {
             crossAxisCount: 3,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
-            childAspectRatio: 2.5,
+            childAspectRatio: 2.2,
           ),
           itemCount: slots.length,
           itemBuilder: (context, index) {
             final slot = slots[index];
-            final status = slot['status'];
-            final isSelected = selectedSlot == slot['time'];
+            final time = slot['time'] as String;
+            final isAvailable = slot['status'] == 'available';
+            final isSelected = provider.selectedSlot == time;
             
-            Color bgColor = AppColors.surface;
-            Color textColor = AppColors.textPrimary;
-            double opacity = 1.0;
-            Border border = Border.all(color: AppColors.border);
-
-            if (isSelected) {
-              bgColor = AppColors.primary;
-              textColor = Colors.white;
-              border = Border.all(color: Colors.transparent);
-            } else if (status == 'unavailable') {
-              bgColor = AppColors.disabledBg;
-              textColor = AppColors.textDisabled;
-              opacity = 0.5;
-            }
-
             return GestureDetector(
-              onTap: status == 'unavailable' ? null : () {
-                setState(() => selectedSlot = slot['time'] as String);
-              },
-              child: Opacity(
-                opacity: opacity,
-                child: Container(
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(10),
-                    border: border,
+              onTap: isAvailable ? () => provider.setSlot(time) : null,
+              child: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.teal : (isAvailable ? Colors.white : AppColors.background),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSelected ? Colors.transparent : AppColors.border,
                   ),
-                  child: Text(
-                    slot['time'] as String,
-                    style: AppTypography.bodyMedium.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
+                ),
+                child: Text(
+                  time,
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? Colors.white : (isAvailable ? AppColors.textPrimary : AppColors.textMuted),
                   ),
                 ),
               ),

@@ -1,17 +1,381 @@
-# arogyam_flutter
+# Arogyam - Healthcare Management System
 
-A new Flutter project.
+Arogyam is a comprehensive healthcare management application built with Flutter, focusing on seamless patient-doctor interactions, digital health records (ABHA integration), and efficient clinic management.
 
-## Getting Started
+## Full Project File Structure
 
-This project is a starting point for a Flutter application.
+Below is a complete list of all files in the project.
 
-A few resources to get you started if this is your first Flutter project:
+### Root Files
+- `.gitignore`
+- `analysis_options.yaml`
+- `pubspec.lock`
+- `pubspec.yaml`
+- `README.md`
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+### lib/
+- `bootstrap.dart`
+- `main.dart`
+- **app/**
+  - `app.dart`
+  - **config/**
+    - `app_config.dart`
+    - `environment.dart`
+    - `feature_flags.dart`
+  - **router/**
+    - `app_router.dart`
+    - `role_redirect.dart`
+    - `route_guards.dart`
+    - `route_names.dart`
+  - **theme/**
+    - `app_colors.dart`
+    - `app_spacing.dart`
+    - `app_theme.dart`
+    - `app_typography.dart`
+- **core/**
+  - **constants/**
+    - `api_constants.dart`
+    - `app_constants.dart`
+    - `security_constants.dart`
+  - **device/**
+    - `connectivity_service.dart`
+    - `device_info_service.dart`
+  - **errors/**
+    - `error_handler.dart`
+    - `exceptions.dart`
+    - `failures.dart`
+  - **location/**
+    - `distance_calculator.dart`
+    - `geofence_service.dart`
+    - `location_service.dart`
+  - **network/**
+    - `api_client.dart`
+    - `api_response.dart`
+    - **interceptors/**
+      - `auth_interceptor.dart`
+      - `logging_interceptor.dart`
+      - `refresh_token_interceptor.dart`
+    - `network_info.dart`
+  - **nfc/**
+    - `nfc_permission.dart`
+    - `nfc_service.dart`
+    - `nfc_session.dart`
+  - **notifications/**
+    - `notification_handler.dart`
+    - `notification_service.dart`
+  - **security/**
+    - `biometric_service.dart`
+    - `encryption_service.dart`
+    - `permission_service.dart`
+    - `token_manager.dart`
+  - **storage/**
+    - `cache_manager.dart`
+    - `local_storage.dart`
+    - `secure_storage.dart`
+  - **utils/**
+    - `date_utils.dart`
+    - `debouncer.dart`
+    - `formatters.dart`
+    - `validators.dart`
+  - **widgets/**
+    - `app_bottom_navigation.dart`
+    - `app_button.dart`
+    - `app_card.dart`
+    - `app_empty_view.dart`
+    - `app_error_view.dart`
+    - `app_loader.dart`
+    - `app_map_view.dart`
+    - `app_text_field.dart`
+- **features/**
+  - **admin/**
+    - **data/**
+      - **datasources/**
+        - `analytics_remote_datasource.dart`
+        - `disease_remote_datasource.dart`
+        - `doctor_audit_datasource.dart`
+        - `pharmacy_audit_datasource.dart`
+        - `prescription_trends_datasource.dart`
+      - **models/**
+        - `disease_trend_model.dart`
+        - `doctor_risk_model.dart`
+        - `outbreak_model.dart`
+        - `pharmacy_audit_model.dart`
+        - `prescription_trend_model.dart`
+    - **domain/**
+      - **usecases/**
+        - `get_disease_trends.dart`
+        - `get_doctor_risk_scores.dart`
+        - `get_national_statistics.dart`
+        - `get_pharmacy_audits.dart`
+        - `get_prescription_trends.dart`
+    - **presentation/**
+      - **pages/**
+        - **dashboard/**
+          - `admin_dashboard_page.dart`
+        - **disease_trends/**
+          - `trends_page.dart`
+        - **doctor_audit/**
+          - `audit_page.dart`
+        - **outbreak_monitoring/**
+          - `monitoring_page.dart`
+        - **pharmacy_audit/**
+          - `audit_page.dart`
+      - **widgets/**
+        - `audit_alert_card.dart`
+        - `disease_chart.dart`
+        - `hotspot_card.dart`
+        - `risk_score_card.dart`
+        - `statistics_card.dart`
+  - **ai_callback/**
+    - **data/**
+      - **datasources/**
+        - `ai_callback_remote_datasource.dart`
+      - **models/**
+        - `callback_session_model.dart`
+      - **repositories/**
+        - `ai_callback_repository_impl.dart`
+    - **domain/**
+      - **entities/**
+        - `callback_session.dart`
+      - **repositories/**
+        - `ai_callback_repository.dart`
+      - **usecases/**
+        - `cancel_callback.dart`
+        - `get_callback_status.dart`
+        - `request_callback.dart`
+  - **auth/**
+    - **data/**
+      - **datasources/**
+        - `auth_remote_datasource.dart`
+      - **models/**
+        - `user_model.dart`
+      - **repositories/**
+        - `auth_repository_impl.dart`
+    - **domain/**
+      - **entities/**
+        - `user.dart`
+      - **repositories/**
+        - `auth_repository.dart`
+      - **usecases/**
+        - `login_usecase.dart`
+    - **presentation/**
+      - **pages/**
+        - `login_page.dart`
+      - **providers/**
+        - `auth_provider.dart`
+  - **clinic/**
+    - **doctor/**
+      - **presentation/**
+        - **pages/**
+          - **consultation/**
+            - `consultation_page.dart`
+          - **dashboard/**
+            - `doctor_dashboard_page.dart`
+          - **patient_records/**
+            - `records_page.dart`
+          - **prescription/**
+            - `prescription_writer_page.dart`
+        - **providers/**
+          - `doctor_dashboard_provider.dart`
+          - `patient_provider.dart`
+          - `prescription_provider.dart`
+        - **widgets/**
+          - `patient_summary_card.dart`
+          - `prescription_item.dart`
+          - `vitals_card.dart`
+    - **reception/**
+      - **presentation/**
+        - **pages/**
+          - **patient_check_in/**
+            - `check_in_page.dart`
+          - **queue_management/**
+            - `queue_page.dart`
+          - **reception_stats/**
+            - `stats_page.dart`
+        - **providers/**
+          - `checkin_provider.dart`
+          - `queue_provider.dart`
+          - `reception_stats_provider.dart`
+        - **widgets/**
+          - `next_patient_card.dart`
+          - `queue_patient_card.dart`
+          - `queue_status_badge.dart`
+    - **shared/**
+      - **data/**
+        - **models/**
+          - `clinic_shared_model.dart`
+  - **patient/**
+    - **data/**
+      - `clinic_datasource.dart`
+      - `clinic_repository.dart`
+      - **datasources/**
+        - `abha_remote_datasource.dart`
+        - `appointment_remote_datasource.dart`
+        - `clinic_remote_datasource.dart`
+        - `medical_history_remote_datasource.dart`
+        - `patient_remote_datasource.dart`
+        - `prescription_remote_datasource.dart`
+        - `queue_remote_datasource.dart`
+      - **models/**
+        - `abha_model.dart`
+        - `appointment_model.dart`
+        - `clinic_model.dart`
+        - `medical_record_model.dart`
+        - `patient_model.dart`
+        - `prescription_model.dart`
+        - `queue_status_model.dart`
+      - `prescription_datasource.dart`
+      - `prescription_repository.dart`
+      - **repositories/**
+        - `appointment_repository_impl.dart`
+        - `medical_history_repository_impl.dart`
+        - `patient_repository_impl.dart`
+        - `prescription_repository_impl.dart`
+    - **domain/**
+      - **entities/**
+        - `patient.dart`
+        - `prescription.dart`
+      - **repositories/**
+        - `appointment_repository.dart`
+        - `medical_history_repository.dart`
+        - `patient_repository.dart`
+        - `prescription_repository.dart`
+      - **usecases/**
+        - `book_appointment.dart`
+        - `check_queue_status.dart`
+        - `get_active_prescriptions_usecase.dart`
+        - `get_nearby_clinics_usecase.dart`
+        - `link_abha_id.dart`
+        - `request_ai_callback.dart`
+        - `share_medical_history.dart`
+        - `start_nfc_session.dart`
+    - **presentation/**
+      - **pages/**
+        - **abha_linking/**
+          - `abha_linking_page.dart`
+        - `active_medications_page.dart`
+        - **active_prescriptions/**
+          - `active_prescriptions_page.dart`
+        - **appointment_booking/**
+          - `appointment_booking_page.dart`
+        - **medical_history/**
+          - `medical_history_page.dart`
+          - **tabs/**
+            - `prescriptions_tab.dart`
+            - `records_tab.dart`
+        - **nearby_clinics/**
+          - `nearby_clinics_page.dart`
+        - **nfc_share/**
+          - `nfc_share_page.dart`
+        - **patient_home/**
+          - `patient_home_page.dart`
+        - **queue_status/**
+          - `queue_status_page.dart`
+      - **providers/**
+        - `abha_provider.dart`
+        - `appointment_provider.dart`
+        - `clinics_provider.dart`
+        - `medical_history_provider.dart`
+        - `nearby_clinics_provider.dart`
+        - `patient_home_provider.dart`
+        - `prescriptions_provider.dart`
+        - `queue_provider.dart`
+      - **widgets/**
+        - `ai_callback_section.dart`
+        - `appointment_card.dart`
+        - `clinic_bottom_sheet.dart`
+        - `clinic_card.dart`
+        - `clinic_info_card.dart`
+        - `date_selector.dart`
+        - `encrypted_vault_banner.dart`
+        - `medical_category_card.dart`
+        - `medical_record_card.dart`
+        - `nfc_share_card.dart`
+        - `prescription_card.dart`
+        - `prescriptions_banner.dart`
+        - `queue_status_card.dart`
+        - `quick_action_card.dart`
+        - `slot_selector.dart`
+        - `upcoming_appointment_card.dart`
+        - `user_hero_section.dart`
+  - **pharmacy/**
+    - **data/**
+      - **datasources/**
+        - `controlled_drug_remote_datasource.dart`
+        - `inventory_remote_datasource.dart`
+        - `pharmacy_remote_datasource.dart`
+        - `prescription_remote_datasource.dart`
+      - **models/**
+        - `controlled_drug_log_model.dart`
+        - `inventory_item_model.dart`
+        - `pharmacy_model.dart`
+        - `prescription_verification_model.dart`
+    - **domain/**
+      - **usecases/**
+        - `dispense_medicine.dart`
+        - `record_controlled_substance.dart`
+        - `report_inventory_mismatch.dart`
+        - `update_inventory.dart`
+        - `verify_prescription.dart`
+    - **presentation/**
+      - **pages/**
+        - **controlled_substance_log/**
+          - `security_log_page.dart`
+        - **dashboard/**
+          - `pharmacy_dashboard_page.dart`
+        - **inventory_management/**
+          - `inventory_page.dart`
+        - **prescription_verify/**
+          - `verify_page.dart`
+      - **widgets/**
+        - `inventory_card.dart`
+        - `medicine_card.dart`
+        - `security_log_card.dart`
+        - `verification_result_card.dart`
+  - **queue/**
+    - **domain/**
+      - **usecases/**
+        - `auto_check_in_patient.dart`
+        - `get_queue_status.dart`
+        - `join_queue.dart`
+        - `leave_queue.dart`
+- **shared/**
+  - **entities/**
+    - `clinic.dart`
+    - `doctor.dart`
+    - `medicine.dart`
+    - `patient.dart`
+    - `prescription.dart`
+    - `user.dart`
+  - **enums/**
+    - `appointment_status.dart`
+    - `prescription_status.dart`
+    - `queue_status.dart`
+    - `user_role.dart`
+  - **models/**
+    - `shared_models.dart`
+  - **widgets/**
+    - `shared_widgets.dart`
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### android/
+- `app/build.gradle.kts`
+- `app/src/main/AndroidManifest.xml`
+- `app/src/main/kotlin/com/example/arogyam_flutter/MainActivity.kt`
+- ... (and other android configuration files)
+
+### ios/
+- `Runner/AppDelegate.swift`
+- `Runner/Info.plist`
+- `Runner/SceneDelegate.swift`
+- ... (and other ios configuration files)
+
+### test/
+- `widget_test.dart`
+
+### web/
+- `index.html`
+- `manifest.json`
+- ... (and other web configuration files)
+
+### windows/ / linux/ / macos/
+- Platform specific build and configuration files.

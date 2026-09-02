@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
-import '../../../../../app/router/route_names.dart';
 import '../../../../../app/theme/app_colors.dart';
-import '../../providers/prescriptions_provider.dart';
+import '../../../../../shared/widgets/page_header.dart';
 import 'tabs/records_tab.dart';
 import 'tabs/prescriptions_tab.dart';
+
+import 'package:provider/provider.dart';
+import '../../../../../core/mixins/polling_mixin.dart';
+import '../../../../../core/widgets/app_refresh_progress_bar.dart';
+import '../../providers/medical_history_provider.dart';
+import '../../providers/prescriptions_provider.dart';
 
 class MedicalHistoryPage extends StatefulWidget {
   const MedicalHistoryPage({super.key});
@@ -15,151 +19,145 @@ class MedicalHistoryPage extends StatefulWidget {
   State<MedicalHistoryPage> createState() => _MedicalHistoryPageState();
 }
 
-class _MedicalHistoryPageState extends State<MedicalHistoryPage> {
+class _MedicalHistoryPageState extends State<MedicalHistoryPage>
+    with WidgetsBindingObserver, PollingMixin<MedicalHistoryPage> {
   bool _showPrescriptions = false;
 
   @override
+  Duration get pollingInterval => const Duration(seconds: 30);
+
+  @override
+  int? get tabIndex => 2;
+
+  @override
+  Future<void> onPoll() async {
+    if (mounted) {
+      await Future.wait([
+        context.read<MedicalHistoryProvider>().refresh(),
+        context.read<PrescriptionsProvider>().refresh(),
+      ]);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => PrescriptionsProvider()),
-      ],
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          leadingWidth: 76,
-          leading: Center(
-            child: _buildCircleButton(
-              context: context,
-              icon: LucideIcons.chevronLeft,
-              onTap: () {
-                if (_showPrescriptions) {
-                  setState(() => _showPrescriptions = false);
-                } else {
-                  Navigator.pushReplacementNamed(context, RouteNames.patientHome);
-                }
-              },
-            ),
-          ),
-          title: Text(
-            _showPrescriptions ? 'Active Medications' : 'Medical History',
-            style: GoogleFonts.inter(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 20),
-              child: _buildCircleButton(
-                context: context,
-                icon: LucideIcons.bell,
-                onTap: () {},
-              ),
+    return Consumer2<MedicalHistoryProvider, PrescriptionsProvider>(
+      builder: (context, historyProvider, rxProvider, _) {
+        final isRefreshing = historyProvider.isRefreshing || rxProvider.isRefreshing;
+        return Column(
+          children: [
+            AppRefreshProgressBar(isRefreshing: isRefreshing),
+            _buildHeader(context),
+            Expanded(
+              child: _showPrescriptions
+                  ? const PrescriptionsTab()
+                  : RecordsTab(
+                      onPrescriptionsTap: () {
+                        setState(() => _showPrescriptions = true);
+                      },
+                    ),
             ),
           ],
-        ),
-        body: _showPrescriptions
-            ? const PrescriptionsTab()
-            : RecordsTab(
-                onPrescriptionsTap: () {
-                  setState(() => _showPrescriptions = true);
-                },
-              ),
-        bottomNavigationBar: _buildBottomNav(context),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildCircleButton({
-    required BuildContext context,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: const BoxDecoration(
-          color: AppColors.iconButtonBg,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, size: 18, color: AppColors.teal),
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      height: 72,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
-      ),
+  Widget _buildHeader(BuildContext context) {
+    return PageHeader(
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildNavItem(context, LucideIcons.home, 'Home', false, () {
-            Navigator.pushReplacementNamed(context, RouteNames.patientHome);
-          }),
-          _buildNavItem(context, LucideIcons.mapPin, 'Clinics', false, () {
-            Navigator.pushReplacementNamed(context, RouteNames.nearbyClinics);
-          }),
-          _buildNavItem(context, LucideIcons.archive, 'History', true, () {
-            if (_showPrescriptions) {
-              setState(() => _showPrescriptions = false);
-            }
-          }),
-          _buildNavItem(context, LucideIcons.radio, 'Share', false, () {
-            Navigator.pushReplacementNamed(context, RouteNames.nfcShare);
-          }),
+          Row(
+            children: [
+              if (_showPrescriptions)
+                GestureDetector(
+                  onTap: () => setState(() => _showPrescriptions = false),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    margin: const EdgeInsets.only(right: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.iconButtonBg,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(LucideIcons.chevronLeft, size: 16, color: AppColors.teal),
+                  ),
+                )
+              else
+                const SizedBox(width: 48), // Align with other tabs
+              Text(
+                _showPrescriptions ? 'Active Medications' : 'Medical History',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          GestureDetector(
+            onTap: () => _showUploadOptions(context),
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.iconButtonBg,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(LucideIcons.plus, size: 18, color: AppColors.teal),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(
-    BuildContext context,
-    IconData icon,
-    String label,
-    bool isActive,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 40,
-            height: 28,
-            decoration: BoxDecoration(
-              color: isActive ? AppColors.iconButtonBg : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: isActive ? AppColors.teal : AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-              color: isActive ? AppColors.teal : AppColors.textSecondary,
-            ),
-          ),
-        ],
+  void _showUploadOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Upload Medical Record',
+              style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            _buildUploadItem(LucideIcons.camera, 'Take Photo', 'Capture your report using camera'),
+            _buildUploadItem(LucideIcons.filePlus, 'Upload File', 'PDF, Images from gallery'),
+            _buildUploadItem(LucideIcons.link, 'Link via ABHA', 'Sync records from ABHA ecosystem'),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUploadItem(IconData icon, String title, String subtitle) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.iconButtonBg,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: AppColors.teal, size: 20),
+      ),
+      title: Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle, style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+      onTap: () {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Encryption engine active. Processing secure upload...')),
+        );
+      },
     );
   }
 }

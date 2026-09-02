@@ -7,29 +7,48 @@ class PrescriptionsProvider extends ChangeNotifier {
 
   List<Prescription> _prescriptions = [];
   bool _isLoading = false;
+  bool _isRefreshing = false;
   String? _errorMessage;
 
-  PrescriptionsProvider({GetActivePrescriptionsUseCase? getActivePrescriptionsUseCase})
-      : _getActivePrescriptionsUseCase = getActivePrescriptionsUseCase ?? GetActivePrescriptionsUseCase() {
+  PrescriptionsProvider({required this._getActivePrescriptionsUseCase}) {
     fetchPrescriptions();
   }
 
   List<Prescription> get prescriptions => _prescriptions;
   bool get isLoading => _isLoading;
+  bool get isRefreshing => _isRefreshing;
   String? get errorMessage => _errorMessage;
 
-  Future<void> fetchPrescriptions() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  bool _isFetching = false;
+
+  Future<void> fetchPrescriptions({bool isRefresh = false}) async {
+    if (_isFetching) return;
+    _isFetching = true;
+
+    if (_prescriptions.isEmpty) {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+    } else {
+      _isRefreshing = true;
+      notifyListeners();
+    }
 
     try {
       _prescriptions = await _getActivePrescriptionsUseCase();
-    } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = null;
+    } catch (e, stackTrace) {
+      debugPrint('[Patient] error: $e\n$stackTrace');
+      if (_prescriptions.isEmpty) {
+        _errorMessage = e.toString();
+      }
     } finally {
       _isLoading = false;
+      _isRefreshing = false;
+      _isFetching = false;
       notifyListeners();
     }
   }
+
+  Future<void> refresh() => fetchPrescriptions(isRefresh: true);
 }

@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../../../app/theme/app_colors.dart';
+import '../../../../../app/router/route_names.dart';
+import '../../../../../core/location/location_service.dart';
 import '../../../../../core/widgets/app_map_view.dart';
+import '../../../../../core/widgets/app_loader.dart';
+import '../../../../../core/widgets/app_error_view.dart';
+import '../../../../../shared/widgets/page_header.dart';
 import '../../providers/nearby_clinics_provider.dart';
 import '../../widgets/clinic_bottom_sheet.dart';
-
-import '../../../../../app/router/route_names.dart';
+import '../../widgets/clinic_about_bottom_sheet.dart';
+import '../../widgets/clinic_card.dart';
+import '../../../../../core/widgets/app_refresh_progress_bar.dart';
+import '../../../../../core/mixins/polling_mixin.dart';
+import '../../../../../shared/entities/clinic.dart';
+import '../../providers/queue_provider.dart';
 
 class NearbyClinicsPage extends StatefulWidget {
   const NearbyClinicsPage({super.key});
@@ -17,340 +27,303 @@ class NearbyClinicsPage extends StatefulWidget {
   State<NearbyClinicsPage> createState() => _NearbyClinicsPageState();
 }
 
-class _NearbyClinicsPageState extends State<NearbyClinicsPage> {
-  late final MapController _mapController;
+class _NearbyClinicsPageState extends State<NearbyClinicsPage>
+    with WidgetsBindingObserver, PollingMixin<NearbyClinicsPage> {
+  bool _isMapView = true;
+  bool _isLocating = false;
+  final TextEditingController _searchController = TextEditingController();
+  final MapController _mapController = MapController();
 
   @override
   void initState() {
     super.initState();
-    _mapController = MapController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchInitialLocation();
+    });
+  }
+
+  Future<void> _fetchInitialLocation() async {
+    final pos = await LocationService().getCurrentLocation(fallbackToDefault: false);
+    if (pos != null && mounted) {
+      context.read<NearbyClinicsProvider>().setUserLocation(pos);
+      _mapController.move(pos, 14.0);
+    }
+  }
+
+  Future<void> _handleCurrentLocation() async {
+    if (_isLocating) return;
+    setState(() => _isLocating = true);
+
+    try {
+      final pos = await LocationService().getCurrentLocation(
+        fallbackToDefault: false,
+        timeout: const Duration(seconds: 10),
+      );
+
+      if (!mounted) return;
+
+      if (pos != null) {
+        context.read<NearbyClinicsProvider>().fetchNearbyClinics(
+          lat: pos.latitude,
+          lng: pos.longitude,
+        );
+        _mapController.move(pos, 15.0);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(LucideIcons.checkCircle2, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Located: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.teal,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Location permission not granted or GPS unavailable. Using default clinic area.',
+            ),
+            backgroundColor: const Color(0xFFD97706),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: _handleCurrentLocation,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error acquiring location: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLocating = false);
+      }
+    }
+  }
+
+  Future<void> _handleJoinQueue(BuildContext context, Clinic clinic) async {
+    final queueProvider = context.read<QueueProvider>();
+    final success = await queueProvider.joinQueue(clinic.id);
+    if (!context.mounted) return;
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Joined ${clinic.name} queue (#${queueProvider.status?.tokenNumber})'),
+          backgroundColor: const Color(0xFF0D9488),
+        ),
+      );
+      Navigator.of(context, rootNavigator: true).pushNamed(RouteNames.queueStatus);
+    } else {
+      final msg = queueProvider.errorMessage ?? 'Failed to join queue. Please try again.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  void _handleAbout(BuildContext context, Clinic clinic) {
+    ClinicAboutBottomSheet.show(
+      context,
+      clinic: clinic,
+      onJoinQueue: () => _handleJoinQueue(context, clinic),
+      onBookVisit: () {
+        Navigator.of(context, rootNavigator: true).pushNamed(
+          RouteNames.appointmentBooking,
+          arguments: clinic,
+        );
+      },
+    );
+  }
+
+  void _onClinicSelected(Clinic clinic) {
+    final provider = context.read<NearbyClinicsProvider>();
+    provider.selectClinic(clinic.id);
+    _mapController.move(LatLng(clinic.latitude, clinic.longitude), 15.0);
+  }
+
+  @override
+  Duration get pollingInterval => const Duration(seconds: 30);
+
+  @override
+  int? get tabIndex => 1;
+
+  @override
+  Future<void> onPoll() async {
+    if (mounted) {
+      await context.read<NearbyClinicsProvider>().refresh();
+    }
   }
 
   @override
   void dispose() {
-    _mapController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
-  void _zoom(double delta) {
-    final currentZoom = _mapController.camera.zoom;
-    _mapController.move(_mapController.camera.center, currentZoom + delta);
-  }
-
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => NearbyClinicsProvider(),
-      child: _NearbyClinicsView(
-        mapController: _mapController,
-        onZoom: _zoom,
-      ),
-    );
-  }
-}
-
-class _NearbyClinicsView extends StatelessWidget {
-  final MapController mapController;
-  final Function(double) onZoom;
-
-  const _NearbyClinicsView({
-    required this.mapController,
-    required this.onZoom,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
+    return Consumer<NearbyClinicsProvider>(
+      builder: (context, provider, child) {
+        return Column(
           children: [
-            // 1. Pinned Header & Search Bar (Top Layer, Opaque)
-            _buildHeader(context),
-
-            // 2. Map and Draggable Sheet Area
+            AppRefreshProgressBar(isRefreshing: provider.isRefreshing),
+            _buildHeader(),
+            _buildSearchAndToggle(),
             Expanded(
-              child: Consumer<NearbyClinicsProvider>(
-                builder: (context, provider, child) {
-                  if (provider.isLoading) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.teal,
-                      ),
-                    );
+              child: Builder(
+                builder: (context) {
+                  if (provider.isLoading && provider.clinics.isEmpty) {
+                    return const Center(child: AppLoader());
                   }
 
-                  if (provider.errorMessage != null) {
-                    return Center(
-                      child: Text(
-                        'Error: ${provider.errorMessage}',
-                        style: GoogleFonts.inter(
-                          color: AppColors.warning,
-                          fontSize: 14,
-                        ),
-                      ),
+                  if (provider.errorMessage != null && provider.clinics.isEmpty) {
+                    return AppErrorView(
+                      message: provider.errorMessage!,
+                      onRetry: () => provider.fetchNearbyClinics(),
                     );
                   }
 
                   return Stack(
                     children: [
-                      // Map Layer (Bottom) - Fills remaining space
-                      Positioned.fill(
-                        child: AppMapView(
-                          controller: mapController,
+                      if (_isMapView)
+                        AppMapView(
+                          controller: _mapController,
                           clinics: provider.clinics,
-                          onMarkerTap: (clinic) {
-                            provider.selectClinic(clinic.id);
+                          userLocation: provider.userLocation,
+                          selectedClinicId: provider.selectedClinicId,
+                          onMarkerTap: _onClinicSelected,
+                          onLocationTap: _handleCurrentLocation,
+                          isLocating: _isLocating,
+                        )
+                      else
+                        ListView.builder(
+                          padding: const EdgeInsets.all(20),
+                          itemCount: provider.clinics.length,
+                          itemBuilder: (context, index) {
+                            final clinic = provider.clinics[index];
+                            final isSelected = provider.selectedClinicId == clinic.id;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: ClinicCard(
+                                clinic: clinic,
+                                isSelected: isSelected,
+                                onTap: () => _onClinicSelected(clinic),
+                                onAbout: () => _handleAbout(context, clinic),
+                                onJoinQueue: () => _handleJoinQueue(context, clinic),
+                                onBookVisit: () {
+                                  Navigator.of(context, rootNavigator: true).pushNamed(
+                                    RouteNames.appointmentBooking,
+                                    arguments: clinic,
+                                  );
+                                },
+                              ),
+                            );
                           },
                         ),
-                      ),
-
-                      // Zoom Buttons Overlay - Stable in this Stack
-                      Positioned(
-                        right: 16,
-                        top: 16,
-                        child: Column(
-                          children: [
-                            _ZoomButton(
-                              icon: LucideIcons.plus,
-                              onPressed: () => onZoom(1),
-                            ),
-                            const SizedBox(height: 8),
-                            _ZoomButton(
-                              icon: LucideIcons.minus,
-                              onPressed: () => onZoom(-1),
-                            ),
-                          ],
+                      if (_isMapView)
+                        ClinicBottomSheet(
+                          clinics: provider.clinics,
+                          onClinicSelected: _onClinicSelected,
                         ),
-                      ),
-
-                      // Draggable Bottom Sheet (Overlay)
-                      ClinicBottomSheet(clinics: provider.clinics),
                     ],
                   );
                 },
               ),
             ),
-
           ],
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNav(context),
+        );
+      },
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    final provider = context.read<NearbyClinicsProvider>();
-    
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-      decoration: const BoxDecoration(
-        color: AppColors.card,
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.border,
-            width: 1,
-          ),
-        ),
-      ),
-      child: Column(
+  Widget _buildHeader() {
+    return PageHeader(
+      child: Row(
         children: [
-          // Title Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildCircleButton(
-                icon: LucideIcons.chevronLeft,
-                onTap: () {
-                  Navigator.pushReplacementNamed(context, RouteNames.patientHome);
-                },
-              ),
-              Text(
-                'Clinics & Centers',
-                style: GoogleFonts.inter(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.4,
-                ),
-              ),
-              _buildCircleButton(
-                icon: LucideIcons.bell,
-                onTap: () {},
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Search Bar
-          Container(
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: AppColors.border,
-                width: 1,
-              ),
+          const SizedBox(width: 48),
+          Text(
+            'Nearby Clinics',
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                const Icon(
-                  LucideIcons.search,
-                  size: 18,
-                  color: AppColors.textMuted,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    onChanged: (value) => provider.searchClinics(value),
-                    decoration: InputDecoration(
-                      hintText: 'Search by clinic name, doctor, or area',
-                      hintStyle: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: AppColors.textMuted,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchAndToggle() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      color: Colors.white,
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(LucideIcons.search, size: 18, color: AppColors.textMuted),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) => context.read<NearbyClinicsProvider>().searchClinics(value),
+                      decoration: const InputDecoration(
+                        hintText: 'Search clinics or speciality',
+                        border: InputBorder.none,
+                        isDense: true,
                       ),
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCircleButton({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: const BoxDecoration(
-          color: AppColors.iconButtonBg,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: AppColors.teal,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      height: 72,
-      decoration: const BoxDecoration(
-        color: AppColors.card,
-        border: Border(
-          top: BorderSide(
-            color: AppColors.border,
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildNavItem(LucideIcons.home, 'Home', false, () {
-            Navigator.pushReplacementNamed(context, RouteNames.patientHome);
-          }),
-          _buildNavItem(LucideIcons.mapPin, 'Clinics', true, () {}),
-          _buildNavItem(LucideIcons.archive, 'History', false, () {
-            Navigator.pushReplacementNamed(context, RouteNames.medicalHistory);
-          }),
-          _buildNavItem(LucideIcons.radio, 'Share', false, () {
-            Navigator.pushReplacementNamed(context, RouteNames.nfcShare);
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 40,
-            height: 28,
-            decoration: BoxDecoration(
-              color: isActive ? AppColors.iconButtonBg : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: isActive ? AppColors.teal : AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-              color: isActive ? AppColors.teal : AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ZoomButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  const _ZoomButton({
-    required this.icon,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+                ],
               ),
-            ],
+            ),
           ),
-          child: Icon(
-            icon,
-            size: 20,
-            color: AppColors.teal,
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: () => setState(() => _isMapView = !_isMapView),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.teal,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                _isMapView ? LucideIcons.list : LucideIcons.map,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

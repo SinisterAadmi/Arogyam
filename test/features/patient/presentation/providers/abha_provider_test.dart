@@ -1,11 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:arogyam_flutter/features/patient/presentation/providers/abha_provider.dart';
+import 'package:arogyam_flutter/features/patient/domain/repositories/abha_repository.dart';
+import 'package:arogyam_flutter/features/patient/data/models/abha_model.dart';
+
+class MockAbhaRepository extends AbhaRepository {
+  @override Future<AbhaModel> getAbhaStatus() async => AbhaModel(abhaId: '');
+  @override Future<void> linkAbha(String abhaId, String otp) async {}
+}
 
 void main() {
   late AbhaProvider abhaProvider;
+  late MockAbhaRepository mockRepository;
 
   setUp(() {
-    abhaProvider = AbhaProvider();
+    mockRepository = MockAbhaRepository();
+    abhaProvider = AbhaProvider(repository: mockRepository);
   });
 
   group('AbhaProvider Tests', () {

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../../shared/entities/clinic.dart';
 import '../../domain/usecases/get_nearby_clinics_usecase.dart';
 
@@ -10,23 +11,25 @@ class NearbyClinicsProvider extends ChangeNotifier {
   List<Clinic> _allClinics = [];
   List<Clinic> _filteredClinics = [];
   bool _isLoading = false;
+  bool _isRefreshing = false;
   String? _errorMessage;
   String? _selectedClinicId;
   SortOption _currentSort = SortOption.distance;
   String _searchQuery = '';
+  LatLng? _userLocation;
 
-  NearbyClinicsProvider({GetNearbyClinicsUseCase? getNearbyClinicsUseCase})
-      : _getNearbyClinicsUseCase =
-            getNearbyClinicsUseCase ?? GetNearbyClinicsUseCase() {
+  NearbyClinicsProvider({required this._getNearbyClinicsUseCase}) {
     fetchNearbyClinics();
   }
 
   List<Clinic> get clinics => _filteredClinics;
   bool get isLoading => _isLoading;
+  bool get isRefreshing => _isRefreshing;
   String? get errorMessage => _errorMessage;
   String? get selectedClinicId => _selectedClinicId;
   SortOption get currentSort => _currentSort;
   String get searchQuery => _searchQuery;
+  LatLng? get userLocation => _userLocation;
 
   String get currentSortLabel {
     switch (_currentSort) {
@@ -47,6 +50,11 @@ class NearbyClinicsProvider extends ChangeNotifier {
           (c) => c.id == _selectedClinicId,
           orElse: () => _filteredClinics.first,
         );
+
+  void setUserLocation(LatLng location) {
+    _userLocation = location;
+    notifyListeners();
+  }
 
   void selectClinic(String id) {
     if (_selectedClinicId != id) {
@@ -73,7 +81,6 @@ class NearbyClinicsProvider extends ChangeNotifier {
       _filteredClinics = _allClinics.where((clinic) {
         final nameMatch = clinic.name.toLowerCase().contains(_searchQuery);
         final addressMatch = clinic.address.toLowerCase().contains(_searchQuery);
-        // You could also add specialty if it was in the entity
         return nameMatch || addressMatch;
       }).toList();
     }
@@ -104,24 +111,53 @@ class NearbyClinicsProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchNearbyClinics() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  bool _isFetching = false;
+
+  Future<void> fetchNearbyClinics({
+    bool isRefresh = false,
+    double? lat,
+    double? lng,
+  }) async {
+    if (_isFetching) return;
+    _isFetching = true;
+
+    if (lat != null && lng != null) {
+      _userLocation = LatLng(lat, lng);
+    }
+
+    if (_allClinics.isEmpty) {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+    } else {
+      _isRefreshing = true;
+      notifyListeners();
+    }
 
     try {
-      final fetchedClinics = await _getNearbyClinicsUseCase();
+      final fetchedClinics = await _getNearbyClinicsUseCase(
+        lat: lat ?? _userLocation?.latitude,
+        lng: lng ?? _userLocation?.longitude,
+      );
       _allClinics = fetchedClinics.toList();
       _applyFilterAndSort();
       
       if (_filteredClinics.isNotEmpty && _selectedClinicId == null) {
         _selectedClinicId = _filteredClinics.first.id;
       }
-    } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = null;
+    } catch (e, stackTrace) {
+      debugPrint('[Patient] error: $e\n$stackTrace');
+      if (_allClinics.isEmpty) {
+        _errorMessage = e.toString();
+      }
     } finally {
       _isLoading = false;
+      _isRefreshing = false;
+      _isFetching = false;
       notifyListeners();
     }
   }
+
+  Future<void> refresh() => fetchNearbyClinics(isRefresh: true);
 }

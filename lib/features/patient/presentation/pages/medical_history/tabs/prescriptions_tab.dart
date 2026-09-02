@@ -27,7 +27,7 @@ class PrescriptionsTab extends StatelessWidget {
         Expanded(
           child: Consumer<PrescriptionsProvider>(
             builder: (context, provider, child) {
-              if (provider.isLoading) {
+              if (provider.isLoading && provider.prescriptions.isEmpty) {
                 return const Center(
                   child: CircularProgressIndicator(color: AppColors.teal),
                 );

@@ -37,24 +37,30 @@ class PrescriptionCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(
-                    LucideIcons.pill,
-                    size: 18,
-                    color: AppColors.teal,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    prescription.medicineName,
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: AppColors.textPrimary,
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(
+                      LucideIcons.pill,
+                      size: 18,
+                      color: AppColors.teal,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        prescription.medicineName,
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppColors.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               _buildStatusBadge(prescription.status),
             ],
           ),
@@ -102,7 +108,7 @@ class PrescriptionCard extends StatelessWidget {
               ),
               GestureDetector(
                 onTap: () {
-                  // TODO: navigate to QR display screen
+                  // QR display
                 },
                 child: const Row(
                   children: [
