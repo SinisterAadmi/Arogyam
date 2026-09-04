@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+vapi-call-details.json
+latest_vapi_webhook.json
+*.log
+

@@ -46,3 +46,16 @@ app.*.map.json
 # Widget Preview related
 .widget_preview/
 /android/app/google-services.json
+
+# Backend secret and build exclusions
+.env
+.env.*
+!.env.example
+Arogyam-backend/.env
+Arogyam-backend/.env.*
+!Arogyam-backend/.env.example
+Arogyam-backend/node_modules/
+Arogyam-backend/dist/
+Arogyam-backend/vapi-call-details.json
+Arogyam-backend/latest_vapi_webhook.json
+Arogyam-backend/*.log

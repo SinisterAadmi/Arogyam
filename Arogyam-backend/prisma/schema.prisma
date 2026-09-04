@@ -1,0 +1,308 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  patient
+  doctor
+  reception
+  pharmacy
+  admin
+}
+
+model User {
+  id          String   @id @default(uuid())
+  firebaseUid String   @unique
+  phoneNumber String?  @unique
+  email       String?  @unique
+  role        Role
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  patient   Patient?
+  doctor    Doctor?
+  reception Reception?
+  pharmacy  Pharmacy?
+}
+
+model Patient {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id])
+  name                  String
+  abhaId                String?  @unique
+  imageUrl              String?
+  isAbhaLinked          Boolean  @default(false)
+  dob                   DateTime?
+  gender                String?
+  bloodGroup            String?
+  address               String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  appointments       Appointment[]
+  queueTokens        QueueToken[]
+  prescriptions      Prescription[]
+  medicalRecords     MedicalRecord[]
+  nfcSessions        NfcSession[]
+  abhaLinks          AbhaLink[]
+  aiCallbackRequests AiCallbackRequest[]
+  controlledLogs     ControlledSubstanceLog[]
+  privacySettings    PrivacySettings?
+  accessHistory      AccessHistory[]
+  consentSessions    ConsentSession[]
+}
+
+model Clinic {
+  id                String   @id @default(uuid())
+  name              String
+  address           String
+  phone             String?
+  specialty         String?
+  operatingHours    String?
+  description       String?
+  latitude          Float
+  longitude         Float
+  geofenceRadius    Float    @default(100.0)
+  isLiveQueueActive Boolean  @default(false)
+  isOpen            Boolean  @default(true)
+  rating            Float    @default(0.0)
+  reviewCount       Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  doctors            Doctor[]
+  receptions         Reception[]
+  appointments       Appointment[]
+  queueTokens        QueueToken[]
+  prescriptions      Prescription[]
+  aiCallbackRequests AiCallbackRequest[]
+  pharmacies         Pharmacy[]
+}
+
+model Doctor {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  clinicId  String
+  clinic    Clinic   @relation(fields: [clinicId], references: [id])
+  name      String
+  specialty String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments  Appointment[]
+  prescriptions Prescription[]
+  nfcSessions   NfcSession[]
+}
+
+model Reception {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  clinicId  String
+  clinic    Clinic   @relation(fields: [clinicId], references: [id])
+  name      String   @default("Reception Staff")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Pharmacy {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  clinicId  String
+  clinic    Clinic   @relation(fields: [clinicId], references: [id])
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  controlledLogs ControlledSubstanceLog[]
+  inventory      InventoryItem[]
+}
+
+enum AppointmentStatus {
+  pending
+  scheduled
+  completed
+  cancelled
+  no_show
+  reschedule_requested
+}
+
+model Appointment {
+  id          String            @id @default(uuid())
+  patientId   String
+  patient     Patient           @relation(fields: [patientId], references: [id])
+  clinicId    String
+  clinic      Clinic            @relation(fields: [clinicId], references: [id])
+  doctorId    String
+  doctor      Doctor            @relation(fields: [doctorId], references: [id])
+  status      AppointmentStatus @default(scheduled)
+  scheduledAt DateTime
+  tokenNumber Int?
+  vapiCallId  String?
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+enum QueueStatus {
+  waiting
+  serving
+  done
+  absent
+}
+
+model QueueToken {
+  id          String      @id @default(uuid())
+  clinicId    String
+  clinic      Clinic      @relation(fields: [clinicId], references: [id])
+  patientId   String
+  patient     Patient     @relation(fields: [patientId], references: [id])
+  tokenNumber Int
+  status      QueueStatus @default(waiting)
+  queueDate   DateTime    @default(now())
+  joinedAt    DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([clinicId, queueDate, tokenNumber])
+}
+
+enum PrescriptionStatus {
+  active
+  expired
+  dispensed
+}
+
+model Prescription {
+  id                 String             @id @default(uuid())
+  patientId          String
+  patient            Patient            @relation(fields: [patientId], references: [id])
+  doctorId           String
+  doctor             Doctor             @relation(fields: [doctorId], references: [id])
+  clinicId           String
+  clinic             Clinic             @relation(fields: [clinicId], references: [id])
+  medicineName       String
+  dosageInstructions String
+  expiryDate         DateTime
+  status             PrescriptionStatus @default(active)
+  rxCode             String             @unique
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  controlledLogs ControlledSubstanceLog[]
+}
+
+model MedicalRecord {
+  id                   String   @id @default(uuid())
+  patientId            String
+  patient              Patient  @relation(fields: [patientId], references: [id])
+  title                String
+  category             String
+  date                 DateTime
+  doctorName           String
+  facilityName         String
+  encryptedContentRef String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model ControlledSubstanceLog {
+  id             String       @id @default(uuid())
+  pharmacyId     String
+  pharmacy       Pharmacy     @relation(fields: [pharmacyId], references: [id])
+  prescriptionId String
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+  medicineName   String
+  patientId      String
+  patient        Patient      @relation(fields: [patientId], references: [id])
+  dispensedBy    String
+  timestamp      DateTime     @default(now())
+}
+
+model InventoryItem {
+  id           String   @id @default(uuid())
+  pharmacyId   String
+  pharmacy     Pharmacy @relation(fields: [pharmacyId], references: [id])
+  medicineName String
+  quantity     Int
+  isControlled Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+}
+
+model NfcSession {
+  id        String   @id @default(uuid())
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  doctorId  String
+  doctor    Doctor   @relation(fields: [doctorId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model AbhaLink {
+  id        String   @id @default(uuid())
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  abhaId    String
+  status    String
+  createdAt DateTime @default(now())
+}
+
+model AiCallbackRequest {
+  id            String   @id @default(uuid())
+  patientId     String
+  patient       Patient  @relation(fields: [patientId], references: [id])
+  clinicId      String
+  clinic        Clinic   @relation(fields: [clinicId], references: [id])
+  phone         String
+  status        String
+  requestedSlot DateTime
+  createdAt     DateTime @default(now())
+}
+
+model PrivacySettings {
+  id                String  @id @default(uuid())
+  patientId         String  @unique
+  patient           Patient @relation(fields: [patientId], references: [id])
+  shareWithDoctors  Boolean @default(true)
+  shareWithClinics  Boolean @default(true)
+  enableBiometrics  Boolean @default(false)
+  marketingEmails   Boolean @default(false)
+  updatedAt         DateTime @updatedAt
+}
+
+model AccessHistory {
+  id         String   @id @default(uuid())
+  patientId  String
+  patient    Patient  @relation(fields: [patientId], references: [id])
+  accessedBy String
+  role       String
+  purpose    String
+  timestamp  DateTime @default(now())
+}
+
+model ConsentSession {
+  id                 String    @id @default(uuid())
+  patientId          String
+  patient            Patient   @relation(fields: [patientId], references: [id])
+  shortCode          String    @unique
+  qrToken            String    @unique @default(uuid())
+  status             String    @default("active")
+  sessionExpiresAt   DateTime
+  codeExpiresAt      DateTime
+  codeFailedAttempts Int       @default(0)
+  usedAt             DateTime?
+  usedMethod         String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
